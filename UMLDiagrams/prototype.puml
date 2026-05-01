@@ -1,0 +1,20 @@
+@startuml
+title Prototype Pattern\nCreates a new Event by copying an existing one
+
+class Event {
+  +id: UUID
+  +title: String
+  +slug: String
+  +description: String
+  +location: String
+  +capacity: Integer
+  +starts_at: DateTime
+  +ends_at: DateTime
+  +is_cancelled: Boolean
+  --
+  +clone(new_title, new_starts_at, new_ends_at): Event
+}
+
+
+Event ..> Event : clone() creates new instance
+@enduml

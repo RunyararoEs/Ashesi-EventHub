@@ -1,0 +1,41 @@
+@startuml
+skinparam sequenceArrowThickness 1.5
+skinparam sequenceParticipantBackgroundColor #FAFAFA
+skinparam sequenceParticipantBorderColor #CCCCCC
+skinparam sequenceLifeLineBorderColor #AAAAAA
+skinparam sequenceBoxBackgroundColor #F5F5FF
+skinparam noteBorderColor #CCCCCC
+skinparam noteBackgroundColor #FFF8DC
+
+title EventHub: Key Sequence Diagram
+
+actor Student
+actor "Club Admin" as CA
+actor "System Admin" as SA
+participant "Frontend\n(Browser)" as FE
+participant "JWTAdapter\n[Adapter]" as JWT
+participant "Django View" as VIEW
+participant "RegistrationFactory\n[Factory]" as FAC
+participant "Event.clone()\n[Prototype]" as PROTO
+participant "NotificationBuilder\n[Builder]" as NB
+participant "Django Signals\n[Observer]" as SIG
+database "Database" as DB
+
+
+CA -> FE : Fill Create Event form\n(title, location, capacity, dates)
+FE -> VIEW : POST /api/events/
+VIEW -> DB : Event.objects.create(...)
+DB --> VIEW : Event saved
+
+DB -> SIG : post_save fired on Event (created=True)
+SIG -> DB : find users who previously\nregistered for this club's events
+DB --> SIG : [user1, user2, ...]
+loop for each interested user
+  SIG -> NB : .recipient(user)\n.for_event_created(event).build()
+  NB -> DB : Save Notification
+end
+SIG --> VIEW : done
+
+VIEW --> FE : 201 Created — event
+FE --> CA : "Event created!"
+@enduml

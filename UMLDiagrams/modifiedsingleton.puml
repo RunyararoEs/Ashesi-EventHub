@@ -1,0 +1,32 @@
+@startuml ModifiedSingleton_Pattern
+
+title Modified Singleton Pattern\nLimits the number of ClubAdmins to a maximum of 3 per Club
+
+class User {
+  +id: UUID
+  +email: String
+  +username: String
+  +role: Role
+}
+
+class Club {
+  +id: UUID
+  +name: String
+  +slug: String
+}
+
+class ClubAdmin {
+  +id: Integer
+  +position: String
+  +MAX_ADMINS_PER_CLUB: Integer = 3
+  --
+  +clean()
+  +save()
+}
+
+
+
+Club "1" o-- "0..3" ClubAdmin : managed by
+User "1" -- "0..1" ClubAdmin : may be
+
+@enduml

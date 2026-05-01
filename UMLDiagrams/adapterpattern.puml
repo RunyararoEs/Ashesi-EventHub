@@ -1,0 +1,36 @@
+@startuml
+title Adapter Pattern\nWraps the JWT library so the rest of the app never imports it directly
+
+interface AuthInterface {
+  +login(email, password): Dict
+  +refresh(token): Dict
+  +get_user_from_token(token): User
+}
+
+class JWTAdapter {
+  +{static} login(email, password): Dict
+  +{static} refresh(refresh_token): Dict
+  +{static} get_user_from_token(token): User
+}
+
+class simplejwt <<library>> {
+  +RefreshToken.for_user(user)
+  +RefreshToken(token_str)
+  +AccessToken(token_str)
+}
+
+class LoginView {
+  +post(request): Response
+}
+
+class TokenRefreshAdapterView {
+  +post(request): Response
+}
+
+
+
+JWTAdapter ..|> AuthInterface : implements
+JWTAdapter --> simplejwt : wraps
+LoginView --> JWTAdapter : calls
+TokenRefreshAdapterView --> JWTAdapter : calls
+@enduml

@@ -1,0 +1,26 @@
+@startuml Singleton_Pattern
+
+title Singleton Pattern\nEnsures only ONE SystemAdmin can ever exist in the system
+
+class User {
+  +id: UUID
+  +email: String
+  +username: String
+  +role: Role
+  --
+  +is_system_admin(): Boolean
+  +save()
+}
+
+class SystemAdmin {
+  +id: Integer
+  --
+  +clean()
+  +save()
+}
+
+
+
+User "1" -- "1" SystemAdmin : linked to
+
+@enduml

@@ -1,0 +1,111 @@
+@startuml
+title EventHub — Use Case Diagram
+
+left to right direction
+
+actor Student as S
+actor "Club Admin" as CA
+actor "System Admin" as SA
+
+rectangle "EventHub System" {
+
+  ' ── Student Use Cases ──────────────────────────────
+  package "Account" {
+    usecase "Register Account" as UC1
+    usecase "Login" as UC2
+    usecase "View Profile" as UC3
+    usecase "Edit Profile" as UC4
+    usecase "Logout" as UC5
+  }
+
+  package "Events" {
+    usecase "Browse Events" as UC6
+    usecase "Search Events" as UC7
+    usecase "View Event Details" as UC8
+    usecase "Register for Event" as UC9
+    usecase "Join Waitlist" as UC10
+    usecase "Cancel Registration" as UC11
+    usecase "View My Registrations" as UC12
+  }
+
+  package "Clubs" {
+    usecase "Browse Clubs" as UC13
+    usecase "View Club Details" as UC14
+  }
+
+  package "Notifications" {
+    usecase "View Notifications" as UC15
+    usecase "Mark Notification Read" as UC16
+    usecase "Mark All Read" as UC17
+  }
+
+  ' ── Club Admin Use Cases ───────────────────────────
+  package "Club Management" {
+    usecase "View Club Dashboard" as UC18
+    usecase "Create Event" as UC19
+    usecase "Edit Event" as UC20
+    usecase "Cancel Event" as UC21
+    usecase "View Event Registrations" as UC22
+    usecase "Clone Event" as UC23
+    usecase "Request Admin Transfer" as UC24
+  }
+
+  ' ── System Admin Use Cases ─────────────────────────
+  package "Platform Management" {
+    usecase "View All Users" as UC25
+    usecase "Create Club" as UC26
+    usecase "Assign Club Admin" as UC27
+    usecase "View Transfer Requests" as UC28
+    usecase "Approve Transfer Request" as UC29
+    usecase "Reject Transfer Request" as UC30
+    usecase "Access Django Admin Panel" as UC31
+  }
+
+}
+
+' ── Student associations ───────────────────────────
+S --> UC1
+S --> UC2
+S --> UC3
+S --> UC4
+S --> UC5
+S --> UC6
+S --> UC7
+S --> UC8
+S --> UC9
+S --> UC10
+S --> UC11
+S --> UC12
+S --> UC13
+S --> UC14
+S --> UC15
+S --> UC16
+S --> UC17
+
+' ── Club Admin inherits Student + extras ───────────
+CA --|> S
+CA --> UC18
+CA --> UC19
+CA --> UC20
+CA --> UC21
+CA --> UC22
+CA --> UC23
+CA --> UC24
+
+' ── System Admin associations ──────────────────────
+SA --> UC2
+SA --> UC25
+SA --> UC26
+SA --> UC27
+SA --> UC28
+SA --> UC29
+SA --> UC30
+SA --> UC31
+
+' ── Include relationships ──────────────────────────
+UC9 ..> UC10 : <<extend>>\nif event is full
+UC19 ..> UC21 : <<include>>\ncan cancel after creating
+UC24 ..> UC28 : <<include>>\nappears in transfer list
+UC29 ..> UC27 : <<include>>\nassigns new admin
+UC7 ..> UC6 : <<include>>\nsearch within browse
+@enduml

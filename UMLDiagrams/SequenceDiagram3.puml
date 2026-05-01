@@ -1,0 +1,55 @@
+@startuml
+skinparam sequenceArrowThickness 1.5
+skinparam sequenceParticipantBackgroundColor #FAFAFA
+skinparam sequenceParticipantBorderColor #CCCCCC
+skinparam sequenceLifeLineBorderColor #AAAAAA
+skinparam sequenceBoxBackgroundColor #F5F5FF
+skinparam noteBorderColor #CCCCCC
+skinparam noteBackgroundColor #FFF8DC
+
+title EventHub: Key Sequence Diagram
+
+actor Student
+actor "Club Admin" as CA
+actor "System Admin" as SA
+participant "Frontend\n(Browser)" as FE
+participant "JWTAdapter\n[Adapter]" as JWT
+participant "Django View" as VIEW
+participant "RegistrationFactory\n[Factory]" as FAC
+participant "Event.clone()\n[Prototype]" as PROTO
+participant "NotificationBuilder\n[Builder]" as NB
+participant "Django Signals\n[Observer]" as SIG
+database "Database" as DB
+
+
+Student -> FE : Click "Cancel Registration"
+FE -> VIEW : DELETE /api/events/<id>/register/
+VIEW -> DB : get EventRegistration
+DB --> VIEW : registration (status=REGISTERED)
+VIEW -> DB : reg.status = CANCELLED\nreg.save()
+
+DB -> SIG : pre_save — snapshot prev_status=REGISTERED
+DB -> SIG : post_save fired
+SIG -> SIG : detect REGISTERED → CANCELLED
+SIG -> NB : .for_registration_cancelled(event).build()
+NB -> DB : Save cancellation Notification
+SIG -> SIG : _promote_from_waitlist(event)
+SIG -> DB : find first WAITLIST registration\nordered by created_at
+DB --> SIG : next_in_line (Student B)
+SIG -> DB : next_in_line.status = REGISTERED\nnext_in_line.save()
+
+DB -> SIG : post_save fired on Student B registration
+SIG -> SIG : detect WAITLIST → REGISTERED
+SIG -> NB : .recipient(StudentB)\n.for_registration_confirmed(event).build()
+NB -> DB : Save confirmation Notification for Student B
+SIG --> VIEW : done
+
+VIEW --> FE : 200 OK
+FE --> Student : "Registration cancelled"
+
+note over SIG, DB
+  Student B receives a notification
+  automatically without any extra view code
+end note
+
+@enduml

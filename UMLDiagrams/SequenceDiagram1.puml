@@ -1,0 +1,36 @@
+@startuml
+skinparam sequenceArrowThickness 1.5
+skinparam sequenceParticipantBackgroundColor #FAFAFA
+skinparam sequenceParticipantBorderColor #CCCCCC
+skinparam sequenceLifeLineBorderColor #AAAAAA
+skinparam sequenceBoxBackgroundColor #F5F5FF
+skinparam noteBorderColor #CCCCCC
+skinparam noteBackgroundColor #FFF8DC
+
+title EventHub: Key Sequence Diagram
+
+actor Student
+actor "Club Admin" as CA
+actor "System Admin" as SA
+participant "Frontend\n(Browser)" as FE
+participant "JWTAdapter\n[Adapter]" as JWT
+participant "Django View" as VIEW
+participant "RegistrationFactory\n[Factory]" as FAC
+participant "Event.clone()\n[Prototype]" as PROTO
+participant "NotificationBuilder\n[Builder]" as NB
+participant "Django Signals\n[Observer]" as SIG
+database "Database" as DB
+
+
+Student -> FE: Enter email & password
+FE -> VIEW: POST /api/auth/login/
+VIEW -> JWT : JWTAdapter.login(email, password)
+JWT -> DB: authenticate(email, password)
+DB --> JWT: User instance
+JWT -> JWT: RefreshToken.for_user(user)
+JWT --> VIEW: { access, refresh }
+VIEW --> FE: 200 OK: returns tokens
+FE -> FE: saveTokens(access, refresh)
+FE --> Student: Redirect to home.html
+
+@enduml

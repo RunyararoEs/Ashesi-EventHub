@@ -1,0 +1,40 @@
+@startuml
+skinparam sequenceArrowThickness 1.5
+skinparam sequenceParticipantBackgroundColor #FAFAFA
+skinparam sequenceParticipantBorderColor #CCCCCC
+skinparam sequenceLifeLineBorderColor #AAAAAA
+skinparam sequenceBoxBackgroundColor #F5F5FF
+skinparam noteBorderColor #CCCCCC
+skinparam noteBackgroundColor #FFF8DC
+
+title EventHub: Key Sequence Diagram
+
+actor Student
+actor "Club Admin" as CA
+actor "System Admin" as SA
+participant "Frontend\n(Browser)" as FE
+participant "JWTAdapter\n[Adapter]" as JWT
+participant "Django View" as VIEW
+participant "RegistrationFactory\n[Factory]" as FAC
+participant "Event.clone()\n[Prototype]" as PROTO
+participant "NotificationBuilder\n[Builder]" as NB
+participant "Django Signals\n[Observer]" as SIG
+database "Database" as DB
+
+SA -> FE : Click Approve on transfer request
+FE -> VIEW : PATCH /api/users/transfer-request/<id>/approve/
+VIEW -> DB : get ClubAdminTransferRequest
+DB --> VIEW : transfer (status=PENDING)
+VIEW -> DB : transfer.approve()
+DB -> DB : delete old ClubAdmin record
+DB -> DB : old admin user.role = STUDENT
+DB -> DB : create new ClubAdmin for requester
+DB -> DB : requester.role = CLUB_ADMIN
+DB -> DB : transfer.status = APPROVED
+DB --> VIEW : removed_admin_user
+
+VIEW -> DB : Notification for requester\n"Transfer Request Approved"
+VIEW -> DB : Notification for removed admin\n"Club Admin Role Transferred"
+VIEW --> FE : 200 OK
+FE --> SA : "Transfer request approved"
+@enduml

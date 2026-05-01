@@ -1,0 +1,34 @@
+@startuml Observer_Pattern
+
+title Observer Pattern\nAutomatically triggers notifications and waitlist promotion when models are saved
+
+class Event {
+  +id: UUID
+  +title: String
+  +is_cancelled: Boolean
+  +capacity: Integer
+}
+
+class EventRegistration {
+  +id: UUID
+  +status: Status
+}
+
+class SignalObserver {
+  +capture_event_before_save()
+  +handle_event_saved()
+  +capture_registration_before_save()
+  +handle_registration_saved()
+  -_promote_from_waitlist(event)
+}
+
+class NotificationBuilder {
+  +build(): Notification
+}
+
+
+Event --> SignalObserver : triggers post_save
+EventRegistration --> SignalObserver : triggers post_save
+SignalObserver ..> NotificationBuilder : uses
+
+@enduml

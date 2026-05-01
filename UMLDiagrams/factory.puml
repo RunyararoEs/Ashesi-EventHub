@@ -1,0 +1,46 @@
+@startuml Factory_Pattern
+
+title Factory Pattern\nDecides REGISTERED vs WAITLIST status based on event capacity
+
+class RegistrationFactory {
+  -event: Event
+  --
+  +__init__(event)
+  -_determine_status(): Status
+  +get_or_create(user): EventRegistration
+}
+
+class Event {
+  +id: UUID
+  +title: String
+  +capacity: Integer
+}
+
+class EventRegistration {
+  +id: UUID
+  +status: Status
+}
+
+enum Status {
+  REGISTERED
+  WAITLIST
+  CANCELLED
+}
+
+note right of RegistrationFactory
+  <b>Factory Pattern</b>
+  _determine_status() checks confirmed
+  registration count vs capacity.
+  count < capacity → REGISTERED
+  count >= capacity → WAITLIST
+  capacity is None → always REGISTERED
+  Views never decide status themselves.
+  They ask the factory and get back
+  the correct registration record.
+end note
+
+RegistrationFactory --> Event : reads capacity from
+RegistrationFactory ..> EventRegistration : creates
+EventRegistration --> Status : has
+
+@enduml
