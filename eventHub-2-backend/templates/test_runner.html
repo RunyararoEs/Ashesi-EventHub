@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>eventHub — test run</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #1a2332;
+      --border: #2d3a4d;
+      --text: #e7edf5;
+      --muted: #8b9cb3;
+      --ok: #3ecf8e;
+      --fail: #f56565;
+      --warn: #ecc94b;
+      --accent: #63b3ed;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 3rem;
+    }
+    header {
+      margin-bottom: 1.75rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1rem;
+    }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin: 0 0 0.35rem;
+      letter-spacing: -0.02em;
+    }
+    .sub {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(220px, 280px) 1fr;
+      gap: 1.5rem;
+    }
+    @media (max-width: 800px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.1rem 1.2rem;
+    }
+    .card h2 {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin: 0 0 0.75rem;
+      font-weight: 600;
+    }
+    .suite {
+      margin-bottom: 1rem;
+    }
+    .suite:last-child { margin-bottom: 0; }
+    .suite strong {
+      color: var(--accent);
+      font-size: 0.95rem;
+    }
+    .suite ul {
+      margin: 0.4rem 0 0;
+      padding-left: 1.1rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    button {
+      background: linear-gradient(180deg, #4a90d9 0%, #357abd 100%);
+      border: none;
+      color: #fff;
+      padding: 0.55rem 1.15rem;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+    button:hover:not(:disabled) {
+      filter: brightness(1.08);
+    }
+    .spinner {
+      width: 1rem;
+      height: 1rem;
+      border: 2px solid rgba(255,255,255,0.35);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+    button.loading .spinner { display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .stats {
+      display: none;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+    .stats.visible { display: flex; }
+    .stat {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.65rem 1rem;
+      min-width: 120px;
+    }
+    .stat .n { font-size: 1.35rem; font-weight: 700; }
+    .stat .l { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    .stat.ok .n { color: var(--ok); }
+    .stat.fail .n { color: var(--fail); }
+    .cases {
+      max-height: 420px;
+      overflow: auto;
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+      font-size: 0.78rem;
+      line-height: 1.45;
+    }
+    .case {
+      padding: 0.25rem 0.4rem;
+      border-radius: 4px;
+      margin-bottom: 2px;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+    .case.ok { background: rgba(62, 207, 142, 0.08); }
+    .case.fail, .case.error { background: rgba(245, 101, 101, 0.1); }
+    .badge {
+      flex-shrink: 0;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 0.1rem 0.35rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+    .badge.ok { background: rgba(62, 207, 142, 0.25); color: var(--ok); }
+    .badge.fail { background: rgba(245, 101, 101, 0.25); color: var(--fail); }
+    .badge.error { background: rgba(236, 201, 75, 0.25); color: var(--warn); }
+    pre.raw {
+      margin: 0;
+      margin-top: 1rem;
+      padding: 1rem;
+      background: #0a0e14;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      overflow: auto;
+      max-height: 280px;
+      font-size: 0.72rem;
+      color: #c8d0da;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    details summary {
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-top: 0.75rem;
+    }
+    .banner {
+      display: none;
+      padding: 0.65rem 1rem;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+    }
+    .banner.err { display: block; background: rgba(245, 101, 101, 0.15); border: 1px solid rgba(245, 101, 101, 0.4); color: #feb2b2; }
+    .banner.info { display: block; background: rgba(99, 179, 237, 0.12); border: 1px solid rgba(99, 179, 237, 0.35); color: var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Test dashboard</h1>
+      <p class="sub">Runs <code>manage.py test users events notifications</code> (DEBUG only).</p>
+    </header>
+
+    <div id="banner" class="banner"></div>
+
+    <div class="layout">
+      <aside class="card">
+        <h2>Coverage (manual)</h2>
+        {% for suite in suites %}
+        <div class="suite">
+          <strong>{{ suite.label }}</strong>
+          <ul>
+            {% for t in suite.tests %}<li>{{ t }}</li>{% endfor %}
+          </ul>
+        </div>
+        {% endfor %}
+      </aside>
+
+      <section class="card">
+        <h2>Run</h2>
+        <div class="toolbar">
+          <button type="button" id="runBtn">
+            <span class="spinner" aria-hidden="true"></span>
+            Run tests
+          </button>
+        </div>
+
+        <div id="stats" class="stats">
+          <div class="stat" id="statRan"><div class="n" id="nRan">—</div><div class="l">Tests</div></div>
+          <div class="stat" id="statTime"><div class="n" id="nTime">—</div><div class="l">Seconds</div></div>
+          <div class="stat ok" id="statOk"><div class="n" id="nOk">—</div><div class="l">Passed (parsed)</div></div>
+        </div>
+
+        <div id="cases" class="cases"></div>
+
+        <details>
+          <summary>Raw output</summary>
+          <pre class="raw" id="rawOut"></pre>
+        </details>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    function getCookie(name) {
+      let v = null;
+      if (document.cookie && document.cookie !== '') {
+        document.cookie.split(';').forEach(function(part) {
+          const s = part.trim();
+          if (s.startsWith(name + '=')) {
+            v = decodeURIComponent(s.slice(name.length + 1));
+          }
+        });
+      }
+      return v;
+    }
+
+    const runBtn = document.getElementById('runBtn');
+    const banner = document.getElementById('banner');
+    const stats = document.getElementById('stats');
+    const casesEl = document.getElementById('cases');
+    const rawOut = document.getElementById('rawOut');
+
+    function showBanner(kind, msg) {
+      banner.className = 'banner ' + (kind === 'err' ? 'err' : 'info');
+      banner.textContent = msg;
+    }
+
+    runBtn.addEventListener('click', async function() {
+      banner.className = 'banner';
+      banner.textContent = '';
+      casesEl.innerHTML = '';
+      rawOut.textContent = '';
+      stats.classList.remove('visible');
+      runBtn.disabled = true;
+      runBtn.classList.add('loading');
+
+      try {
+        const r = await fetch('/api/dev/run-tests/', {
+          method: 'POST',
+          headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json',
+          },
+          credentials: 'same-origin',
+          body: '{}',
+        });
+        const data = await r.json();
+        const text = (data.stdout || '') + (data.stderr ? '\n' + data.stderr : '');
+        rawOut.textContent = text || '(empty)';
+
+        const parsed = data.parsed || {};
+        const list = parsed.cases || [];
+        const summary = parsed.summary;
+
+        if (list.length) {
+          stats.classList.add('visible');
+          let pass = 0, fail = 0;
+          list.forEach(function(c) {
+            const row = document.createElement('div');
+            row.className = 'case ' + (c.status === 'ok' ? 'ok' : (c.status === 'fail' ? 'fail' : 'error'));
+            const badge = document.createElement('span');
+            badge.className = 'badge ' + (c.status === 'ok' ? 'ok' : (c.status === 'fail' ? 'fail' : 'error'));
+            badge.textContent = c.status;
+            const name = document.createElement('span');
+            name.textContent = c.name;
+            row.appendChild(badge);
+            row.appendChild(name);
+            casesEl.appendChild(row);
+            if (c.status === 'ok') pass++; else fail++;
+          });
+          document.getElementById('nRan').textContent = summary && summary.ran != null ? summary.ran : list.length;
+          document.getElementById('nTime').textContent = summary && summary.duration_s != null ? summary.duration_s.toFixed(2) : '—';
+          document.getElementById('nOk').textContent = pass;
+          document.getElementById('statOk').className = 'stat ' + (fail ? 'fail' : 'ok');
+        }
+
+        if (data.exit_code === 0) {
+          showBanner('info', 'Finished with exit code 0.');
+        } else {
+          showBanner('err', 'Exit code ' + data.exit_code + (r.status === 504 ? ' (timeout)' : '') + '. See raw output for details.');
+        }
+      } catch (e) {
+        showBanner('err', 'Request failed: ' + e.message);
+      } finally {
+        runBtn.disabled = false;
+        runBtn.classList.remove('loading');
+      }
+    });
+  </script>
+</body>
+</html>

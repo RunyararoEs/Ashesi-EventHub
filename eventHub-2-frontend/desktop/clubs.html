@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EventHub — My Club</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .club-hero {
+      background: linear-gradient(135deg, var(--red) 0%, var(--red-dark) 100%);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      color: white;
+      margin-bottom: 28px;
+      position: relative;
+      overflow: hidden;
+    }
+    .club-hero::before {
+      content: '';
+      position: absolute;
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.06);
+      top: -100px;
+      right: -60px;
+    }
+    .club-hero::after {
+      content: '';
+      position: absolute;
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.04);
+      bottom: -60px;
+      left: 40px;
+    }
+    .club-hero-content { position: relative; z-index: 1; }
+    .club-hero-name {
+      font-family: var(--font-display);
+      font-size: 2rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .club-hero-desc {
+      font-size: 0.9rem;
+      opacity: 0.85;
+      max-width: 560px;
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+    .club-hero-stats {
+      display: flex;
+      gap: 32px;
+    }
+    .club-hero-stat { text-align: center; }
+    .club-hero-stat-val {
+      font-size: 1.8rem;
+      font-weight: 700;
+    }
+    .club-hero-stat-label {
+      font-size: 0.75rem;
+      opacity: 0.8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+ 
+    /* Tabs */
+    .page-tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 2px solid var(--border);
+      margin-bottom: 28px;
+    }
+    .page-tab {
+      padding: 12px 24px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+      border: none;
+      background: none;
+      font-family: var(--font-body);
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      transition: all var(--transition);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .page-tab svg { width: 16px; height: 16px; }
+    .page-tab:hover { color: var(--text); }
+    .page-tab.active { color: var(--red); border-bottom-color: var(--red); }
+ 
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+ 
+    /* Event management card */
+    .event-manage-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      transition: all var(--transition);
+    }
+    .event-manage-card:hover { border-color: var(--red-mid); box-shadow: var(--shadow-sm); }
+    .event-manage-thumb {
+      width: 80px;
+      height: 80px;
+      border-radius: var(--radius-md);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+    }
+    .event-manage-body { flex: 1; min-width: 0; }
+    .event-manage-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+      color: var(--text);
+    }
+    .event-manage-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+    .event-manage-meta span {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .event-manage-meta svg { width: 12px; height: 12px; }
+    .event-manage-actions {
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+ 
+    /* Confirmation modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 300;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: all; }
+    .modal {
+      background: white;
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: var(--shadow-lg);
+      transform: translateY(20px);
+      transition: transform 0.2s;
+    }
+    .modal-overlay.open .modal { transform: translateY(0); }
+    .modal-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    .modal-text {
+      font-size: 0.88rem;
+      color: var(--muted);
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+ 
+    /* Create event form */
+    .create-form {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      max-width: 640px;
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .input-wrap textarea {
+      width: 100%;
+      padding: 13px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-md);
+      font-family: var(--font-body);
+      font-size: 0.92rem;
+      background: var(--bg);
+      color: var(--text);
+      transition: border-color var(--transition), background var(--transition);
+      outline: none;
+      resize: vertical;
+      min-height: 100px;
+    }
+    .input-wrap textarea:focus {
+      border-color: var(--red);
+      background: var(--white);
+      box-shadow: 0 0 0 3px rgba(193,39,31,0.08);
+    }
+    .input-wrap input[type="datetime-local"] {
+      padding-left: 14px;
+    }
+    .no-icon { padding-left: 14px !important; }
+    .field-hint {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+<script src="../js/auth.js"></script>
+<script src="../js/api.js"></script>
+<script src="js/shared-layout.js"></script>
+ 
+<!-- Confirmation Modal -->
+<div class="modal-overlay" id="cancel-modal">
+  <div class="modal">
+    <div class="modal-title">Cancel this event?</div>
+    <div class="modal-text" id="modal-event-name">
+      This will mark the event as cancelled. Students who registered will be notified. This cannot be undone.
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Keep Event</button>
+      <button class="btn btn-primary" style="background:var(--red);" id="confirm-cancel-btn">Yes, Cancel Event</button>
+    </div>
+  </div>
+</div>
+ 
+<script>
+let cancelEventId = null;
+ 
+(async () => {
+  await buildLayout('nav-myclub');
+ 
+  const content = document.getElementById('page-content');
+ 
+  // Check if club admin
+  const me = window.__me;
+  if (!me || me.role !== 'club_admin') {
+    content.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">🚫</div>
+      <div class="empty-title">Access Denied</div>
+      <div class="empty-text">This page is only available to club admins.</div>
+    </div>`;
+    return;
+  }
+ 
+  const clubProfile = me.club_profile;
+  if (!clubProfile || !clubProfile.club) {
+    content.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">⚠️</div>
+      <div class="empty-title">No Club Assigned</div>
+      <div class="empty-text">You have not been assigned to a club yet. Please contact a system admin.</div>
+    </div>`;
+    return;
+  }
+ 
+  const club = clubProfile.club;
+ 
+  // Load club events
+  const eventsRes = await getEvents({ club: club.slug });
+  const events    = eventsRes.results ?? eventsRes;
+ 
+  const upcoming  = events.filter(e => new Date(e.starts_at) > new Date() && !e.is_cancelled);
+  const totalRegs = events.reduce((sum, e) => sum + (e.registration_count ?? 0), 0);
+ 
+  content.innerHTML = `
+    <!-- Club Hero -->
+    <div class="club-hero">
+      <div class="club-hero-content">
+        <div class="club-hero-name">${club.name}</div>
+        <div class="club-hero-desc">${club.description}</div>
+        <div class="club-hero-stats">
+          <div class="club-hero-stat">
+            <div class="club-hero-stat-val">${events.length}</div>
+            <div class="club-hero-stat-label">Total Events</div>
+          </div>
+          <div class="club-hero-stat">
+            <div class="club-hero-stat-val">${upcoming.length}</div>
+            <div class="club-hero-stat-label">Upcoming</div>
+          </div>
+          <div class="club-hero-stat">
+            <div class="club-hero-stat-val">${totalRegs}</div>
+            <div class="club-hero-stat-label">Registrations</div>
+          </div>
+        </div>
+      </div>
+    </div>
+ 
+    <!-- Tabs -->
+    <div class="page-tabs">
+      <button class="page-tab active" data-tab="overview">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z"/></svg>
+        Overview
+      </button>
+      <button class="page-tab" data-tab="events">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"/></svg>
+        Events
+        <span class="nav-badge" style="background:var(--red);color:white;">${events.length}</span>
+      </button>
+      <button class="page-tab" data-tab="create">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+        Create Event
+      </button>
+    </div>
+ 
+    <!-- Overview Tab -->
+    <div class="tab-panel active" id="tab-overview">
+      <div class="grid-2" style="max-width:700px;">
+        <div class="card" style="padding:24px;">
+          <div class="text-xs text-muted" style="text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Club Name</div>
+          <div style="font-size:1.1rem;font-weight:700;">${club.name}</div>
+        </div>
+        <div class="card" style="padding:24px;">
+          <div class="text-xs text-muted" style="text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Your Position</div>
+          <div style="font-size:1.1rem;font-weight:700;">${clubProfile.position}</div>
+        </div>
+        <div class="card" style="padding:24px;grid-column:1/-1;">
+          <div class="text-xs text-muted" style="text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Description</div>
+          <div style="font-size:0.9rem;line-height:1.6;color:var(--text-soft);">${club.description}</div>
+        </div>
+      </div>
+ 
+      ${upcoming.length > 0 ? `
+      <div style="margin-top:28px;">
+        <div class="section-title" style="margin-bottom:16px;">Next Upcoming Event</div>
+        <div class="event-manage-card" style="max-width:600px;">
+          <div class="event-manage-thumb" style="background:${eventGradient(0)};">${eventEmoji(upcoming[0].title)}</div>
+          <div class="event-manage-body">
+            <div class="event-manage-title">${upcoming[0].title}</div>
+            <div class="event-manage-meta">
+              <span>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"/></svg>
+                ${formatDateTime(upcoming[0].starts_at)}
+              </span>
+              <span>${upcoming[0].registration_count ?? 0} registered</span>
+              ${upcoming[0].capacity ? `<span>Capacity: ${upcoming[0].capacity}</span>` : ''}
+            </div>
+          </div>
+          <a href="edit-event.html?id=${upcoming[0].id}" class="btn btn-outline btn-sm">Edit</a>
+        </div>
+      </div>` : ''}
+    </div>
+ 
+    <!-- Events Tab -->
+    <div class="tab-panel" id="tab-events">
+      ${events.length === 0
+        ? `<div class="empty-state">
+             <div class="empty-icon">📅</div>
+             <div class="empty-title">No events yet</div>
+             <div class="empty-text">Create your first event using the Create Event tab.</div>
+           </div>`
+        : `<div class="list-stack">${events.map((ev, i) => `
+            <div class="event-manage-card">
+              <div class="event-manage-thumb" style="background:${eventGradient(i)};">${eventEmoji(ev.title)}</div>
+              <div class="event-manage-body">
+                <div class="event-manage-title">${ev.title}</div>
+                <div class="event-manage-meta">
+                  <span>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"/></svg>
+                    ${formatDateTime(ev.starts_at)}
+                  </span>
+                  ${ev.location ? `<span>${ev.location}</span>` : ''}
+                  <span>${ev.registration_count ?? 0} registered</span>
+                  ${ev.capacity ? `<span>Capacity: ${ev.capacity}</span>` : '<span>Unlimited</span>'}
+                </div>
+              </div>
+              <div class="event-manage-actions">
+                ${ev.is_cancelled
+                  ? `<span class="badge badge-cancelled">Cancelled</span>`
+                  : `<a href="edit-event.html?id=${ev.id}" class="btn btn-outline btn-sm">Edit</a>
+                     <button class="btn btn-danger btn-sm" onclick="openCancelModal('${ev.id}', '${ev.title.replace(/'/g, "\\'")}')">Cancel</button>`
+                }
+              </div>
+            </div>
+          `).join('')}</div>`
+      }
+    </div>
+ 
+    <!-- Create Event Tab -->
+    <div class="tab-panel" id="tab-create">
+      <div class="create-form">
+        <div class="section-title" style="margin-bottom:6px;">New Event</div>
+        <div class="text-sm text-muted" style="margin-bottom:24px;">This event will be created under <strong>${club.name}</strong></div>
+ 
+        <form id="create-event-form" novalidate>
+ 
+          <div class="form-group">
+            <label class="form-label">Event Title</label>
+            <div class="input-wrap">
+              <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z"/></svg>
+              <input type="text" id="ev-title" placeholder="e.g. Annual Hackathon" required />
+            </div>
+            <div class="form-error" id="title-error">Title is required.</div>
+          </div>
+ 
+          <div class="form-group">
+            <label class="form-label">Description</label>
+            <div class="input-wrap">
+              <textarea id="ev-description" placeholder="Tell students what this event is about…"></textarea>
+            </div>
+          </div>
+ 
+          <div class="form-group">
+            <label class="form-label">Location</label>
+            <div class="input-wrap">
+              <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"/></svg>
+              <input type="text" id="ev-location" placeholder="e.g. Multipurpose Hall" />
+            </div>
+          </div>
+ 
+          <!-- Capacity — drives Factory pattern REGISTERED vs WAITLIST decision -->
+          <div class="form-group">
+            <label class="form-label">
+              Capacity
+              <span style="color:var(--muted);font-weight:400;">(optional)</span>
+            </label>
+            <div class="input-wrap">
+              <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z"/></svg>
+              <input type="number" id="ev-capacity" placeholder="Leave blank for unlimited" min="1" />
+            </div>
+            <div class="field-hint">If set, registrations beyond this limit go to the waitlist.</div>
+          </div>
+ 
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Starts At</label>
+              <div class="input-wrap">
+                <input type="datetime-local" id="ev-starts" class="no-icon" required />
+              </div>
+              <div class="form-error" id="starts-error">Start time is required.</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Ends At</label>
+              <div class="input-wrap">
+                <input type="datetime-local" id="ev-ends" class="no-icon" required />
+              </div>
+              <div class="form-error" id="ends-error">End time is required.</div>
+            </div>
+          </div>
+ 
+          <div class="form-error" id="create-error" style="margin-bottom:14px;font-size:0.85rem;"></div>
+ 
+          <button type="submit" class="btn btn-primary" id="create-btn">
+            <span id="create-label">Create Event</span>
+            <div class="btn-loading" id="create-spinner"></div>
+          </button>
+ 
+        </form>
+      </div>
+    </div>
+  `;
+ 
+  // Tab switching
+  document.querySelectorAll('.page-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.page-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+ 
+  // Create event form
+  document.getElementById('create-event-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+ 
+    const title       = document.getElementById('ev-title').value.trim();
+    const description = document.getElementById('ev-description').value.trim();
+    const location    = document.getElementById('ev-location').value.trim();
+    const starts_at   = document.getElementById('ev-starts').value;
+    const ends_at     = document.getElementById('ev-ends').value;
+    const capacity    = document.getElementById('ev-capacity').value;
+ 
+    // Clear errors
+    ['title-error','starts-error','ends-error','create-error'].forEach(id => {
+      document.getElementById(id).classList.remove('show');
+    });
+    document.getElementById('create-error').textContent = '';
+ 
+    let valid = true;
+    if (!title)     { document.getElementById('title-error').classList.add('show'); valid = false; }
+    if (!starts_at) { document.getElementById('starts-error').classList.add('show'); valid = false; }
+    if (!ends_at)   { document.getElementById('ends-error').classList.add('show'); valid = false; }
+    if (!valid) return;
+ 
+    if (new Date(ends_at) <= new Date(starts_at)) {
+      document.getElementById('ends-error').textContent = 'End time must be after start time.';
+      document.getElementById('ends-error').classList.add('show');
+      return;
+    }
+ 
+    const btn     = document.getElementById('create-btn');
+    const label   = document.getElementById('create-label');
+    const spinner = document.getElementById('create-spinner');
+ 
+    btn.disabled      = true;
+    label.textContent = 'Creating…';
+    spinner.style.display = 'block';
+ 
+    const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+ 
+    try {
+      await apiFetch('/events/', {
+        method: 'POST',
+        body: JSON.stringify({
+          title,
+          description,
+          location,
+          starts_at: new Date(starts_at).toISOString(),
+          ends_at:   new Date(ends_at).toISOString(),
+          slug,
+          club_id: club.id,
+          // Only include capacity if the admin filled it in
+          ...(capacity ? { capacity: parseInt(capacity) } : {}),
+        }),
+      });
+      showToast('Event created!', 'success');
+      setTimeout(() => { window.location.reload(); }, 700);
+    } catch (err) {
+      const msgs = err?.data;
+      const msg  = typeof msgs === 'object'
+        ? Object.values(msgs).flat().join(' ')
+        : 'Failed to create event.';
+      document.getElementById('create-error').textContent = msg;
+      document.getElementById('create-error').classList.add('show');
+      showToast('Failed to create event.', 'error');
+    } finally {
+      btn.disabled      = false;
+      label.textContent = 'Create Event';
+      spinner.style.display = 'none';
+    }
+  });
+ 
+})();
+ 
+// Cancel modal
+function openCancelModal(id, title) {
+  cancelEventId = id;
+  document.getElementById('modal-event-name').textContent =
+    `Are you sure you want to cancel "${title}"? Students who registered will be notified. This cannot be undone.`;
+  document.getElementById('cancel-modal').classList.add('open');
+}
+ 
+function closeModal() {
+  document.getElementById('cancel-modal').classList.remove('open');
+  cancelEventId = null;
+}
+ 
+document.getElementById('confirm-cancel-btn').addEventListener('click', async () => {
+  if (!cancelEventId) return;
+  try {
+    await apiFetch(`/events/${cancelEventId}/`, {
+      method: 'PATCH',
+      body: JSON.stringify({ is_cancelled: true }),
+    });
+    showToast('Event cancelled.', '');
+    closeModal();
+    setTimeout(() => { window.location.reload(); }, 700);
+  } catch {
+    showToast('Failed to cancel event.', 'error');
+    closeModal();
+  }
+});
+ 
+document.getElementById('cancel-modal').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('cancel-modal')) closeModal();
+});
+</script>
+</body>
+</html>

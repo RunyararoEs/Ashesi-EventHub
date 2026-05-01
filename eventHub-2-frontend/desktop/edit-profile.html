@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EventHub — Edit Profile</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<script src="../js/auth.js"></script>
+<script src="../js/api.js"></script>
+<script src="js/shared-layout.js"></script>
+<script>
+(async () => {
+  await buildLayout('nav-profile');
+
+  const content = document.getElementById('page-content');
+
+  content.innerHTML = `
+    <div style="max-width:560px;">
+      <div style="margin-bottom:24px;">
+        <a href="profile.html" style="color:var(--muted);font-size:0.85rem;display:inline-flex;align-items:center;gap:6px;text-decoration:none;">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"/></svg>
+          Back to Profile
+        </a>
+      </div>
+
+      <div class="card" style="padding:32px;">
+        <div class="section-title" style="margin-bottom:8px;">Edit Profile</div>
+        <div class="text-sm text-muted" style="margin-bottom:28px;">Update your account information</div>
+
+        <div id="form-loading" class="loading-center"><div class="spinner"></div></div>
+
+        <form id="edit-form" class="hidden" novalidate>
+          <div class="form-group">
+            <label class="form-label">Username</label>
+            <div class="input-wrap">
+              <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/>
+              </svg>
+              <input type="text" id="username" required />
+            </div>
+            <div class="form-error" id="username-error">Username is required.</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Email address</label>
+            <div class="input-wrap">
+              <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/>
+              </svg>
+              <input type="email" id="email" required />
+            </div>
+            <div class="form-error" id="email-error">Please enter a valid email.</div>
+          </div>
+
+          <div class="form-error" id="form-error" style="margin-bottom:14px;font-size:0.85rem;"></div>
+
+          <div class="flex gap-12" style="margin-top:8px;">
+            <button type="submit" class="btn btn-primary" id="save-btn">
+              <span id="btn-label">Save Changes</span>
+              <div class="btn-loading" id="btn-spinner"></div>
+            </button>
+            <a href="profile.html" class="btn btn-ghost">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+
+  // Load current user data
+  try {
+    const me = await getMe();
+    document.getElementById('username').value = me.username;
+    document.getElementById('email').value    = me.email;
+    document.getElementById('form-loading').classList.add('hidden');
+    document.getElementById('edit-form').classList.remove('hidden');
+  } catch {
+    document.getElementById('form-loading').innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">⚠️</div>
+        <div class="empty-title">Failed to load profile</div>
+      </div>`;
+  }
+
+  // Form submit
+  document.getElementById('edit-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const username = document.getElementById('username').value.trim();
+    const email    = document.getElementById('email').value.trim();
+
+    // Clear errors
+    document.getElementById('username-error').classList.remove('show');
+    document.getElementById('email-error').classList.remove('show');
+    document.getElementById('form-error').textContent = '';
+    document.getElementById('form-error').classList.remove('show');
+
+    let valid = true;
+    if (!username) { document.getElementById('username-error').classList.add('show'); valid = false; }
+    if (!email || !/\S+@\S+\.\S+/.test(email)) { document.getElementById('email-error').classList.add('show'); valid = false; }
+    if (!valid) return;
+
+    const saveBtn = document.getElementById('save-btn');
+    const label   = document.getElementById('btn-label');
+    const spinner = document.getElementById('btn-spinner');
+
+    saveBtn.disabled    = true;
+    label.textContent   = 'Saving…';
+    spinner.style.display = 'block';
+
+    try {
+      await updateMe({ username, email });
+      showToast('Profile updated!', 'success');
+      setTimeout(() => { window.location.href = 'profile.html'; }, 700);
+    } catch (err) {
+      const msgs = err?.data;
+      const msg  = typeof msgs === 'object'
+        ? Object.values(msgs).flat().join(' ')
+        : 'Failed to update profile.';
+      document.getElementById('form-error').textContent = msg;
+      document.getElementById('form-error').classList.add('show');
+      showToast('Update failed.', 'error');
+    } finally {
+      saveBtn.disabled    = false;
+      label.textContent   = 'Save Changes';
+      spinner.style.display = 'none';
+    }
+  });
+})();
+</script>
+</body>
+</html>

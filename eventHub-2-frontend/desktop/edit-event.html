@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EventHub — Edit Event</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .edit-form {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      max-width: 640px;
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .input-wrap textarea {
+      width: 100%;
+      padding: 13px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-md);
+      font-family: var(--font-body);
+      font-size: 0.92rem;
+      background: var(--bg);
+      color: var(--text);
+      transition: border-color var(--transition), background var(--transition);
+      outline: none;
+      resize: vertical;
+      min-height: 100px;
+    }
+    .input-wrap textarea:focus {
+      border-color: var(--red);
+      background: var(--white);
+      box-shadow: 0 0 0 3px rgba(193,39,31,0.08);
+    }
+    .no-icon { padding-left: 14px !important; }
+    .cancelled-banner {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: var(--radius-md);
+      padding: 14px 18px;
+      color: #dc2626;
+      font-size: 0.88rem;
+      font-weight: 600;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .cancelled-banner svg { width: 18px; height: 18px; flex-shrink: 0; }
+    .field-hint {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+<script src="../js/auth.js"></script>
+<script src="../js/api.js"></script>
+<script src="js/shared-layout.js"></script>
+<script>
+(async () => {
+  await buildLayout('nav-myclub');
+ 
+  const content = document.getElementById('page-content');
+  const id      = new URLSearchParams(location.search).get('id');
+ 
+  if (!id) {
+    content.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">❓</div>
+      <div class="empty-title">Event not found</div>
+      <div class="empty-text"><a href="my-club.html" style="color:var(--red);">Back to My Club</a></div>
+    </div>`;
+    return;
+  }
+ 
+  const me = window.__me;
+  if (!me || me.role !== 'club_admin') {
+    content.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">🚫</div>
+      <div class="empty-title">Access Denied</div>
+      <div class="empty-text">This page is only for club admins.</div>
+    </div>`;
+    return;
+  }
+ 
+  try {
+    const ev = await getEvent(id);
+    document.title = `EventHub — Edit: ${ev.title}`;
+ 
+    function toLocal(iso) {
+      if (!iso) return '';
+      const d = new Date(iso);
+      const pad = n => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+ 
+    content.innerHTML = `
+      <div style="margin-bottom:24px;">
+        <a href="my-club.html" style="color:var(--muted);font-size:0.85rem;display:inline-flex;align-items:center;gap:6px;text-decoration:none;">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"/></svg>
+          Back to My Club
+        </a>
+      </div>
+ 
+      ${ev.is_cancelled ? `
+      <div class="cancelled-banner">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
+        This event has been cancelled and can no longer be edited.
+      </div>` : ''}
+ 
+      <div class="edit-form">
+        <div class="section-title" style="margin-bottom:6px;">Edit Event</div>
+        <div class="text-sm text-muted" style="margin-bottom:24px;">Update the details for <strong>${ev.title}</strong></div>
+ 
+        <form id="edit-form" novalidate>
+ 
+          <div class="form-group">
+            <label class="form-label">Event Title</label>
+            <div class="input-wrap">
+              <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z"/></svg>
+              <input type="text" id="ev-title" value="${ev.title}" required ${ev.is_cancelled ? 'disabled' : ''} />
+            </div>
+            <div class="form-error" id="title-error">Title is required.</div>
+          </div>
+ 
+          <div class="form-group">
+            <label class="form-label">Description</label>
+            <div class="input-wrap">
+              <textarea id="ev-description" ${ev.is_cancelled ? 'disabled' : ''}>${ev.description ?? ''}</textarea>
+            </div>
+          </div>
+ 
+          <div class="form-group">
+            <label class="form-label">Location</label>
+            <div class="input-wrap">
+              <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"/></svg>
+              <input type="text" id="ev-location" value="${ev.location ?? ''}" ${ev.is_cancelled ? 'disabled' : ''} />
+            </div>
+          </div>
+ 
+          <!-- Capacity — drives Factory pattern REGISTERED vs WAITLIST decision -->
+          <div class="form-group">
+            <label class="form-label">
+              Capacity
+              <span style="color:var(--muted);font-weight:400;">(optional)</span>
+            </label>
+            <div class="input-wrap">
+              <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z"/></svg>
+              <input type="number" id="ev-capacity" placeholder="Leave blank for unlimited" min="1"
+                value="${ev.capacity ?? ''}" ${ev.is_cancelled ? 'disabled' : ''} />
+            </div>
+            <div class="field-hint">If set, registrations beyond this limit go to the waitlist. Clear to make unlimited.</div>
+          </div>
+ 
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Starts At</label>
+              <div class="input-wrap">
+                <input type="datetime-local" id="ev-starts" class="no-icon" value="${toLocal(ev.starts_at)}" required ${ev.is_cancelled ? 'disabled' : ''} />
+              </div>
+              <div class="form-error" id="starts-error">Start time is required.</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Ends At</label>
+              <div class="input-wrap">
+                <input type="datetime-local" id="ev-ends" class="no-icon" value="${toLocal(ev.ends_at)}" required ${ev.is_cancelled ? 'disabled' : ''} />
+              </div>
+              <div class="form-error" id="ends-error">End time is required.</div>
+            </div>
+          </div>
+ 
+          <div class="form-error" id="edit-error" style="margin-bottom:14px;font-size:0.85rem;"></div>
+ 
+          ${!ev.is_cancelled ? `
+          <div class="flex gap-12">
+            <button type="submit" class="btn btn-primary" id="save-btn">
+              <span id="save-label">Save Changes</span>
+              <div class="btn-loading" id="save-spinner"></div>
+            </button>
+            <a href="my-club.html" class="btn btn-ghost">Cancel</a>
+          </div>` : `
+          <a href="my-club.html" class="btn btn-ghost">Back to My Club</a>`}
+ 
+        </form>
+      </div>
+    `;
+ 
+    if (!ev.is_cancelled) {
+      document.getElementById('edit-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+ 
+        const title       = document.getElementById('ev-title').value.trim();
+        const description = document.getElementById('ev-description').value.trim();
+        const location    = document.getElementById('ev-location').value.trim();
+        const starts_at   = document.getElementById('ev-starts').value;
+        const ends_at     = document.getElementById('ev-ends').value;
+        const capacity    = document.getElementById('ev-capacity').value;
+ 
+        ['title-error','starts-error','ends-error','edit-error'].forEach(id => {
+          document.getElementById(id).classList.remove('show');
+        });
+        document.getElementById('edit-error').textContent = '';
+ 
+        let valid = true;
+        if (!title)     { document.getElementById('title-error').classList.add('show'); valid = false; }
+        if (!starts_at) { document.getElementById('starts-error').classList.add('show'); valid = false; }
+        if (!ends_at)   { document.getElementById('ends-error').classList.add('show'); valid = false; }
+        if (!valid) return;
+ 
+        if (new Date(ends_at) <= new Date(starts_at)) {
+          document.getElementById('ends-error').textContent = 'End time must be after start time.';
+          document.getElementById('ends-error').classList.add('show');
+          return;
+        }
+ 
+        const btn     = document.getElementById('save-btn');
+        const label   = document.getElementById('save-label');
+        const spinner = document.getElementById('save-spinner');
+ 
+        btn.disabled      = true;
+        label.textContent = 'Saving…';
+        spinner.style.display = 'block';
+ 
+        try {
+          await apiFetch(`/events/${id}/`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+              title,
+              description,
+              location,
+              starts_at: new Date(starts_at).toISOString(),
+              ends_at:   new Date(ends_at).toISOString(),
+              // If capacity is empty string, send null to clear the limit.
+              // If it has a value, send the integer.
+              capacity: capacity ? parseInt(capacity) : null,
+            }),
+          });
+          showToast('Event updated!', 'success');
+          setTimeout(() => { window.location.href = 'my-club.html'; }, 700);
+        } catch (err) {
+          const msgs = err?.data;
+          const msg  = typeof msgs === 'object'
+            ? Object.values(msgs).flat().join(' ')
+            : 'Failed to update event.';
+          document.getElementById('edit-error').textContent = msg;
+          document.getElementById('edit-error').classList.add('show');
+          showToast('Update failed.', 'error');
+        } finally {
+          btn.disabled      = false;
+          label.textContent = 'Save Changes';
+          spinner.style.display = 'none';
+        }
+      });
+    }
+ 
+  } catch {
+    content.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">⚠️</div>
+      <div class="empty-title">Event not found</div>
+      <div class="empty-text"><a href="my-club.html" style="color:var(--red);">Back to My Club</a></div>
+    </div>`;
+  }
+})();
+</script>
+</body>
+</html>

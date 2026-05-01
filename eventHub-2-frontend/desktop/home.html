@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EventHub — Home</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<script src="../js/auth.js"></script>
+<script src="../js/api.js"></script>
+<script src="js/shared-layout.js"></script>
+<script>
+(async () => {
+  await buildLayout('nav-home');
+
+  const content = document.getElementById('page-content');
+
+  try {
+    const [upcomingRes, allRes, clubsRes] = await Promise.all([
+      getEvents({ upcoming: 'true' }),
+      getEvents(),
+      getClubs(),
+    ]);
+
+    const upcoming = upcomingRes.results ?? upcomingRes;
+    const all      = allRes.results ?? allRes;
+    const clubs    = clubsRes.results ?? clubsRes;
+
+    content.innerHTML = `
+      <!-- Stats row -->
+      <div class="stats-row mb-32">
+        <div class="stat-card">
+          <div class="stat-card-icon">
+            ${iconCalendar()}
+          </div>
+          <div>
+            <div class="stat-card-val">${upcoming.length}</div>
+            <div class="stat-card-label">Upcoming Events</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-icon">
+            ${iconUsers()}
+          </div>
+          <div>
+            <div class="stat-card-val">${clubs.length}</div>
+            <div class="stat-card-label">Active Clubs</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-icon">
+            ${iconTicket()}
+          </div>
+          <div>
+            <div class="stat-card-val" id="reg-count">—</div>
+            <div class="stat-card-label">My Registrations</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-icon">
+            ${iconBell()}
+          </div>
+          <div>
+            <div class="stat-card-val" id="notif-count">—</div>
+            <div class="stat-card-label">Notifications</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Upcoming Events -->
+      <div class="section-header mb-32" style="margin-bottom:20px;">
+        <div>
+          <div class="section-title">Upcoming Events</div>
+          <div class="section-subtitle">Don't miss what's happening on campus</div>
+        </div>
+        <a href="events.html" class="section-link">
+          See all
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg>
+        </a>
+      </div>
+
+      ${upcoming.length === 0
+        ? `<div class="empty-state" style="padding:40px;">
+             <div class="empty-icon">📅</div>
+             <div class="empty-title">No upcoming events</div>
+             <div class="empty-text">Check back soon for new events from your clubs.</div>
+           </div>`
+        : `<div class="grid-3 mb-32">${upcoming.slice(0,6).map((ev, i) => eventCardHTML(ev, i)).join('')}</div>`
+      }
+
+      <!-- Clubs -->
+      <div class="section-header" style="margin-bottom:20px;margin-top:8px;">
+        <div>
+          <div class="section-title">Campus Clubs</div>
+          <div class="section-subtitle">Find your community</div>
+        </div>
+        <a href="clubs.html" class="section-link">
+          See all
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg>
+        </a>
+      </div>
+
+      ${clubs.length === 0
+        ? `<div class="empty-state" style="padding:40px;">
+             <div class="empty-icon">🏛️</div>
+             <div class="empty-title">No clubs yet</div>
+             <div class="empty-text">Clubs will appear here once they're added.</div>
+           </div>`
+        : `<div class="grid-4">${clubs.slice(0,4).map(clubCardHTML).join('')}</div>`
+      }
+    `;
+
+    // Load registration + notification counts
+    getMyRegistrations().then(res => {
+      const regs = res.results ?? res;
+      document.getElementById('reg-count').textContent = regs.length;
+    }).catch(() => {});
+
+    getNotifications().then(res => {
+      const notifs = res.results ?? res;
+      document.getElementById('notif-count').textContent = notifs.length;
+    }).catch(() => {});
+
+  } catch (err) {
+    content.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">⚠️</div>
+      <div class="empty-title">Failed to load</div>
+      <div class="empty-text">Could not connect to the server. Make sure the backend is running.</div>
+    </div>`;
+  }
+})();
+
+function eventCardHTML(ev, i) {
+  const emoji = eventEmoji(ev.title);
+  const grad  = eventGradient(i);
+  const isUpcoming = new Date(ev.starts_at) > new Date();
+  return `
+    <a href="event-detail.html?id=${ev.id}" class="event-card">
+      <div class="event-card-thumb" style="background:${grad};">${emoji}</div>
+      <div class="event-card-body">
+        <div class="event-card-club">${ev.club?.name ?? ''}</div>
+        <div class="event-card-title">${ev.title}</div>
+        <div class="event-card-meta">
+          <div class="event-card-meta-row">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"/></svg>
+            ${formatDateTime(ev.starts_at)}
+          </div>
+          ${ev.location ? `<div class="event-card-meta-row">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"/></svg>
+            ${ev.location}
+          </div>` : ''}
+        </div>
+      </div>
+      <div class="event-card-footer">
+        <div class="event-card-count">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0"/></svg>
+          ${ev.registration_count ?? 0} registered
+        </div>
+        <span class="badge ${ev.is_cancelled ? 'badge-cancelled' : isUpcoming ? 'badge-upcoming' : 'badge-past'}">
+          ${ev.is_cancelled ? 'Cancelled' : isUpcoming ? 'Upcoming' : 'Past'}
+        </span>
+      </div>
+    </a>
+  `;
+}
+
+function clubCardHTML(club) {
+  return `
+    <a href="club-detail.html?slug=${club.slug}" class="club-card">
+      <div class="club-card-icon">🏛️</div>
+      <div class="club-card-name">${club.name}</div>
+      <div class="club-card-desc">${club.description}</div>
+      <div class="club-card-footer">
+        <span class="club-card-meta">View events →</span>
+      </div>
+    </a>
+  `;
+}
+</script>
+</body>
+</html>

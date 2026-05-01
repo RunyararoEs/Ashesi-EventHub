@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>eventHub</title>
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, sans-serif;
+      background: #0f1419;
+      color: #e7edf5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+    .box {
+      max-width: 28rem;
+      text-align: center;
+    }
+    h1 { font-size: 1.75rem; margin: 0 0 0.5rem; letter-spacing: -0.02em; }
+    p { color: #8b9cb3; margin: 0 0 1.25rem; font-size: 0.95rem; }
+    nav { display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: center; }
+    a {
+      color: #63b3ed;
+      text-decoration: none;
+      padding: 0.45rem 0.9rem;
+      border: 1px solid #2d3a4d;
+      border-radius: 8px;
+      font-size: 0.9rem;
+    }
+    a:hover { background: #1a2332; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>eventHub</h1>
+    <p>Django API backend. Use the links below to explore.</p>
+    <nav>
+      <a href="{% url 'test_runner' %}">Test dashboard</a>
+      <a href="/admin/">Admin</a>
+    </nav>
+  </div>
+</body>
+</html>

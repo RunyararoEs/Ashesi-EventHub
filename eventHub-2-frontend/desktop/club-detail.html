@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EventHub — Event</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<script src="../js/auth.js"></script>
+<script src="../js/api.js"></script>
+<script src="js/shared-layout.js"></script>
+<script>
+(async () => {
+  await buildLayout('nav-events');
+
+  const content = document.getElementById('page-content');
+  const id      = new URLSearchParams(location.search).get('id');
+
+  if (!id) {
+    content.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">❓</div>
+      <div class="empty-title">Event not found</div>
+      <div class="empty-text"><a href="events.html" style="color:var(--red);">Back to events</a></div>
+    </div>`;
+    return;
+  }
+
+  try {
+    const ev    = await getEvent(id);
+    const emoji = eventEmoji(ev.title);
+    const grad  = eventGradient(0);
+    const now   = new Date();
+    const start = new Date(ev.starts_at);
+    const isPast = start < now;
+
+    document.title = `EventHub — ${ev.title}`;
+
+    // Capacity display helpers
+    const hasCapacity    = ev.capacity != null;
+    const spotsRemaining = ev.spots_remaining;
+    const isFull         = hasCapacity && spotsRemaining === 0;
+    const waitlistCount  = ev.waitlist_count ?? 0;
+
+    function capacityBadge() {
+      if (!hasCapacity) return '';
+      if (isFull) {
+        return `<span class="badge badge-cancelled" style="font-size:0.75rem;">Full</span>`;
+      }
+      if (spotsRemaining <= 5) {
+        return `<span class="badge badge-waitlist" style="font-size:0.75rem;">Only ${spotsRemaining} spot${spotsRemaining === 1 ? '' : 's'} left</span>`;
+      }
+      return `<span class="badge badge-upcoming" style="font-size:0.75rem;">${spotsRemaining} spots left</span>`;
+    }
+
+    content.innerHTML = `
+      <div style="margin-bottom:20px;">
+        <a href="events.html" style="color:var(--muted);font-size:0.85rem;display:inline-flex;align-items:center;gap:6px;text-decoration:none;">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"/></svg>
+          Back to Events
+        </a>
+      </div>
+
+      <div class="detail-layout">
+
+        <!-- Left: main content -->
+        <div>
+          <div class="detail-hero" style="background:${grad};">
+            <span style="font-size:5rem;">${emoji}</span>
+            ${ev.is_cancelled ? `<div style="position:absolute;top:16px;right:16px;"><span class="badge badge-cancelled">Cancelled</span></div>` : ''}
+          </div>
+
+          <h1 class="detail-title">${ev.title}</h1>
+
+          <div class="detail-meta">
+
+            <!-- Date & Time -->
+            <div class="detail-meta-row">
+              <div class="detail-meta-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"/></svg>
+              </div>
+              <div class="detail-meta-content">
+                <div class="detail-meta-label">Date &amp; Time</div>
+                <div class="detail-meta-val">${formatDateTime(ev.starts_at)} — ${formatDateTime(ev.ends_at)}</div>
+              </div>
+            </div>
+
+            <!-- Location -->
+            ${ev.location ? `
+            <div class="detail-meta-row">
+              <div class="detail-meta-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"/></svg>
+              </div>
+              <div class="detail-meta-content">
+                <div class="detail-meta-label">Location</div>
+                <div class="detail-meta-val">${ev.location}</div>
+              </div>
+            </div>` : ''}
+
+            <!-- Organiser -->
+            <div class="detail-meta-row">
+              <div class="detail-meta-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z"/></svg>
+              </div>
+              <div class="detail-meta-content">
+                <div class="detail-meta-label">Organiser</div>
+                <div class="detail-meta-val">
+                  <a href="club-detail.html?slug=${ev.club?.slug}" style="color:var(--red);font-weight:600;">${ev.club?.name ?? '—'}</a>
+                </div>
+              </div>
+            </div>
+
+            <!-- Registrations -->
+            <div class="detail-meta-row">
+              <div class="detail-meta-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 0 1 0 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 0 1 0-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375Z"/></svg>
+              </div>
+              <div class="detail-meta-content">
+                <div class="detail-meta-label">Registrations</div>
+                <div class="detail-meta-val">${ev.registration_count ?? 0} confirmed${waitlistCount > 0 ? ` · ${waitlistCount} on waitlist` : ''}</div>
+              </div>
+            </div>
+
+            <!-- Capacity — only shown if the event has a limit -->
+            ${hasCapacity ? `
+            <div class="detail-meta-row">
+              <div class="detail-meta-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"/></svg>
+              </div>
+              <div class="detail-meta-content">
+                <div class="detail-meta-label">Capacity</div>
+                <div class="detail-meta-val" style="display:flex;align-items:center;gap:10px;">
+                  ${ev.registration_count ?? 0} / ${ev.capacity} spots filled
+                  ${capacityBadge()}
+                </div>
+              </div>
+            </div>` : ''}
+
+          </div>
+
+          ${ev.description ? `
+          <div class="detail-section-title">About this event</div>
+          <div class="detail-desc">${ev.description}</div>
+          ` : ''}
+        </div>
+
+        <!-- Right: action card -->
+        <div>
+          <div class="detail-sidebar-card">
+            <div class="detail-sidebar-price" style="font-size:1rem;color:var(--muted);margin-bottom:8px;">Event Registration</div>
+
+            ${ev.is_cancelled
+              ? `<div class="badge badge-cancelled" style="margin-bottom:16px;font-size:0.85rem;padding:8px 16px;">This event has been cancelled</div>`
+              : isPast
+              ? `<div class="badge badge-past" style="margin-bottom:16px;font-size:0.85rem;padding:8px 16px;">This event has passed</div>`
+              : `<div id="reg-action" style="margin-bottom:16px;">
+                  <div class="loading-center" style="padding:16px;"><div class="spinner"></div></div>
+                </div>`
+            }
+
+            <!-- Capacity summary in the sidebar card -->
+            ${hasCapacity && !ev.is_cancelled && !isPast ? `
+            <div style="background:var(--bg);border-radius:var(--radius-md);padding:12px;margin-bottom:16px;font-size:0.82rem;color:var(--muted);">
+              ${isFull
+                ? `<strong style="color:var(--red);">This event is full.</strong> Registering will place you on the waitlist.`
+                : `<strong style="color:var(--text);">${spotsRemaining} spot${spotsRemaining === 1 ? '' : 's'} remaining</strong> out of ${ev.capacity} total.`
+              }
+              ${waitlistCount > 0 ? `<br/>${waitlistCount} ${waitlistCount === 1 ? 'person is' : 'people are'} currently on the waitlist.` : ''}
+            </div>` : ''}
+
+            <div style="font-size:0.8rem;color:var(--muted);line-height:1.6;">
+              <strong style="color:var(--text);">Starts:</strong> ${formatDateTime(ev.starts_at)}<br/>
+              <strong style="color:var(--text);">Ends:</strong> ${formatDateTime(ev.ends_at)}
+            </div>
+          </div>
+        </div>
+
+      </div>
+    `;
+
+    // Load registration state
+    if (!ev.is_cancelled && !isPast) {
+      renderRegAction(ev.user_registration, id, isFull);
+    }
+
+  } catch (err) {
+    content.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">⚠️</div>
+      <div class="empty-title">Event not found</div>
+      <div class="empty-text"><a href="events.html" style="color:var(--red);">Back to events</a></div>
+    </div>`;
+  }
+})();
+
+function renderRegAction(status, id, isFull) {
+  const box = document.getElementById('reg-action');
+  if (!box) return;
+
+  if (status === 'registered') {
+    box.innerHTML = `
+      <div class="badge badge-registered" style="margin-bottom:12px;font-size:0.85rem;padding:8px 16px;display:block;text-align:center;">✓ You are registered</div>
+      <button class="btn btn-danger btn-full" onclick="handleCancel('${id}')">Cancel Registration</button>
+    `;
+  } else if (status === 'waitlist') {
+    box.innerHTML = `
+      <div class="badge badge-waitlist" style="margin-bottom:12px;font-size:0.85rem;padding:8px 16px;display:block;text-align:center;">You are on the waitlist</div>
+      <button class="btn btn-danger btn-full" onclick="handleCancel('${id}')">Leave Waitlist</button>
+    `;
+  } else {
+    box.innerHTML = `
+      <button class="btn btn-primary btn-full btn-lg" onclick="handleRegister('${id}')">
+        ${isFull ? 'Join Waitlist' : 'Sign Up for Event'}
+      </button>
+    `;
+  }
+}
+
+async function handleRegister(id) {
+  try {
+    const res = await registerForEvent(id);
+    showToast(
+      res.status === 'waitlist' ? 'Added to waitlist.' : 'Successfully registered!',
+      'success'
+    );
+    renderRegAction(res.status ?? 'registered', id, false);
+  } catch (err) {
+    const msg = err?.data?.detail || 'Registration failed.';
+    showToast(msg, 'error');
+  }
+}
+
+async function handleCancel(id) {
+  try {
+    await cancelRegistration(id);
+    showToast('Registration cancelled.', '');
+    renderRegAction(null, id, false);
+  } catch {
+    showToast('Could not cancel registration.', 'error');
+  }
+}
+</script>
+</body>
+</html>

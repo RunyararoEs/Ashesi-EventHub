@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EventHub — My Registrations</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<script src="../js/auth.js"></script>
+<script src="../js/api.js"></script>
+<script src="js/shared-layout.js"></script>
+<script>
+(async () => {
+  await buildLayout('nav-registrations');
+
+  const content = document.getElementById('page-content');
+
+  content.innerHTML = `
+    <div class="tabs mb-24" id="tabs">
+      <button class="tab active" data-status="all">All</button>
+      <button class="tab" data-status="registered">Registered</button>
+      <button class="tab" data-status="waitlist">Waitlist</button>
+    </div>
+    <div id="regs-list">
+      <div class="loading-center"><div class="spinner"></div></div>
+    </div>
+  `;
+
+  let allRegs   = [];
+  let curStatus = 'all';
+
+  try {
+    const res = await getMyRegistrations();
+    allRegs   = res.results ?? res;
+    render();
+  } catch {
+    document.getElementById('regs-list').innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">⚠️</div>
+        <div class="empty-title">Failed to load registrations</div>
+      </div>`;
+  }
+
+  function render() {
+    const list = curStatus === 'all'
+      ? allRegs
+      : allRegs.filter(r => r.status === curStatus);
+
+    const el = document.getElementById('regs-list');
+
+    if (list.length === 0) {
+      el.innerHTML = `<div class="empty-state">
+        <div class="empty-icon">🎟️</div>
+        <div class="empty-title">No registrations</div>
+        <div class="empty-text">${curStatus === 'all' ? 'You haven\'t signed up for any events yet.' : `No ${curStatus} registrations.`}
+          <br/><a href="events.html" style="color:var(--red);font-weight:600;margin-top:8px;display:inline-block;">Browse Events</a>
+        </div>
+      </div>`;
+      return;
+    }
+
+    el.innerHTML = `<div class="list-stack">${list.map((reg, i) => {
+      const ev = reg.event;
+      const isUpcoming = ev && new Date(ev.starts_at) > new Date();
+      return `
+        <a href="event-detail.html?id=${ev?.id}" class="event-card-h">
+          <div class="event-card-h-thumb" style="background:${eventGradient(i)};">${eventEmoji(ev?.title ?? '')}</div>
+          <div class="event-card-h-body">
+            <div class="event-card-h-club">${ev?.club?.name ?? ''}</div>
+            <div class="event-card-h-title">${ev?.title ?? 'Event'}</div>
+            <div class="event-card-h-meta">
+              <span>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"/></svg>
+                ${ev?.starts_at ? formatDateTime(ev.starts_at) : '—'}
+              </span>
+              ${ev?.location ? `<span>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"/></svg>
+                ${ev.location}
+              </span>` : ''}
+              <span style="font-size:0.73rem;color:var(--muted);">Registered ${timeAgo(reg.created_at)}</span>
+            </div>
+          </div>
+          <div class="event-card-h-right">
+            <span class="badge badge-${reg.status}">${reg.status}</span>
+            ${isUpcoming ? `<span class="badge badge-upcoming">Upcoming</span>` : ''}
+          </div>
+        </a>
+      `;
+    }).join('')}</div>`;
+  }
+
+  document.getElementById('tabs').addEventListener('click', e => {
+    const btn = e.target.closest('.tab');
+    if (!btn) return;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    curStatus = btn.dataset.status;
+    render();
+  });
+})();
+</script>
+</body>
+</html>

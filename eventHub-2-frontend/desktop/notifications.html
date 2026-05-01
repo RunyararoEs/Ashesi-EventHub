@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EventHub — Notifications</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<script src="../js/auth.js"></script>
+<script src="../js/api.js"></script>
+<script src="js/shared-layout.js"></script>
+<script>
+(async () => {
+  await buildLayout('nav-notifications');
+
+  const content = document.getElementById('page-content');
+
+  content.innerHTML = `
+    <div class="flex items-center justify-between mb-24">
+      <div class="tabs" id="tabs">
+        <button class="tab active" data-filter="all">All</button>
+        <button class="tab" data-filter="unread">Unread</button>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="mark-all-btn">Mark all as read</button>
+    </div>
+    <div class="card" style="overflow:hidden;">
+      <div id="notif-list">
+        <div class="loading-center"><div class="spinner"></div></div>
+      </div>
+    </div>
+  `;
+
+  let allNotifs = [];
+  let showUnread = false;
+
+  async function loadNotifs() {
+    try {
+      const res = await getNotifications(showUnread);
+      allNotifs = res.results ?? res;
+      renderNotifs();
+    } catch {
+      document.getElementById('notif-list').innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">⚠️</div>
+          <div class="empty-title">Failed to load notifications</div>
+        </div>`;
+    }
+  }
+
+  const KIND_EMOJI = {
+    event_created:           '🆕',
+    event_updated:           '✏️',
+    event_cancelled:         '❌',
+    registration_confirmed:  '✅',
+    registration_waitlist:   '⏳',
+    registration_cancelled:  '🚫',
+    event_reminder:          '⏰',
+  };
+
+  function renderNotifs() {
+    const el = document.getElementById('notif-list');
+
+    if (allNotifs.length === 0) {
+      el.innerHTML = `<div class="empty-state">
+        <div class="empty-icon">🔔</div>
+        <div class="empty-title">No notifications</div>
+        <div class="empty-text">${showUnread ? 'You\'re all caught up!' : 'You have no notifications yet.'}</div>
+      </div>`;
+      return;
+    }
+
+    el.innerHTML = `<div class="notif-list">${allNotifs.map(n => `
+      <div class="notif-item ${n.is_read ? '' : 'unread'}" data-id="${n.id}" onclick="handleRead('${n.id}', this)">
+        <div class="notif-indicator ${n.is_read ? 'read' : 'unread'}"></div>
+        <div class="notif-icon">${KIND_EMOJI[n.kind] ?? '🔔'}</div>
+        <div class="notif-body">
+          <div class="notif-title">${n.title}</div>
+          ${n.body ? `<div class="notif-text">${n.body}</div>` : ''}
+          <div class="notif-time">${timeAgo(n.created_at)}</div>
+        </div>
+        ${n.event ? `<a href="event-detail.html?id=${n.event}" class="btn btn-ghost btn-sm" style="flex-shrink:0;" onclick="event.stopPropagation()">View Event</a>` : ''}
+      </div>
+    `).join('')}</div>`;
+  }
+
+  window.handleRead = async (id, el) => {
+    const notif = allNotifs.find(n => n.id === id);
+    if (!notif || notif.is_read) return;
+    try {
+      await markNotificationRead(id);
+      notif.is_read = true;
+      notif.read_at = new Date().toISOString();
+      el.classList.remove('unread');
+      el.querySelector('.notif-indicator')?.classList.replace('unread', 'read');
+    } catch {}
+  };
+
+  document.getElementById('mark-all-btn').addEventListener('click', async () => {
+    try {
+      await markAllNotificationsRead();
+      allNotifs.forEach(n => { n.is_read = true; });
+      renderNotifs();
+      showToast('All marked as read.', 'success');
+    } catch {
+      showToast('Failed to mark all as read.', 'error');
+    }
+  });
+
+  document.getElementById('tabs').addEventListener('click', e => {
+    const btn = e.target.closest('.tab');
+    if (!btn) return;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    showUnread = btn.dataset.filter === 'unread';
+    loadNotifs();
+  });
+
+  loadNotifs();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EventHub — Profile</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<script src="../js/auth.js"></script>
+<script src="../js/api.js"></script>
+<script src="js/shared-layout.js"></script>
+<script>
+(async () => {
+  await buildLayout('nav-profile');
+
+  const content = document.getElementById('page-content');
+
+  try {
+    const [me, regsRes, notifsRes] = await Promise.all([
+      getMe(),
+      getMyRegistrations(),
+      getNotifications(),
+    ]);
+
+    const regs   = regsRes.results   ?? regsRes;
+    const notifs = notifsRes.results ?? notifsRes;
+    const unread = notifs.filter(n => !n.is_read).length;
+
+    content.innerHTML = `
+      <!-- Profile hero -->
+      <div class="profile-hero">
+        <div class="avatar-lg">${me.username[0].toUpperCase()}</div>
+        <div class="profile-info">
+          <div class="profile-name">${me.username}</div>
+          <div class="profile-email">${me.email}</div>
+          <div class="profile-role">${me.role.replace('_', ' ')}</div>
+        </div>
+        <div style="margin-left:auto;">
+          <a href="edit-profile.html" class="btn btn-outline">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125"/></svg>
+            Edit Profile
+          </a>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="profile-stats mb-24">
+        <div class="stat-box">
+          <div class="stat-val">${regs.length}</div>
+          <div class="stat-label">Registrations</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val">${regs.filter(r => r.status === 'registered').length}</div>
+          <div class="stat-label">Confirmed</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val">${regs.filter(r => r.status === 'waitlist').length}</div>
+          <div class="stat-label">On Waitlist</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val">${unread}</div>
+          <div class="stat-label">Unread Notifications</div>
+        </div>
+      </div>
+
+      <!-- Account info -->
+      <div class="card" style="padding:24px;margin-bottom:24px;">
+        <div class="section-title" style="margin-bottom:20px;">Account Details</div>
+        <div class="list-stack" style="gap:16px;">
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="text-xs text-muted" style="text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px;">Username</div>
+              <div style="font-weight:500;">${me.username}</div>
+            </div>
+          </div>
+          <div style="height:1px;background:var(--border);"></div>
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="text-xs text-muted" style="text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px;">Email</div>
+              <div style="font-weight:500;">${me.email}</div>
+            </div>
+          </div>
+          <div style="height:1px;background:var(--border);"></div>
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="text-xs text-muted" style="text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px;">Role</div>
+              <div style="font-weight:500;text-transform:capitalize;">${me.role.replace('_', ' ')}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick links -->
+      <div class="card" style="padding:24px;">
+        <div class="section-title" style="margin-bottom:20px;">Quick Links</div>
+        <div class="list-stack" style="gap:8px;">
+          <a href="my-registrations.html" class="nav-item" style="border-radius:var(--radius-md);border:1px solid var(--border);">
+            ${iconTicket()}
+            My Registrations
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="16" height="16" style="margin-left:auto;color:var(--muted);"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg>
+          </a>
+          <a href="notifications.html" class="nav-item" style="border-radius:var(--radius-md);border:1px solid var(--border);">
+            ${iconBell()}
+            Notifications
+            ${unread > 0 ? `<span class="nav-badge" style="margin-left:8px;">${unread}</span>` : ''}
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="16" height="16" style="margin-left:auto;color:var(--muted);"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg>
+          </a>
+          <button class="nav-item" onclick="logout()" style="border-radius:var(--radius-md);border:1px solid var(--border);color:var(--red);width:100%;text-align:left;">
+            ${iconLogout()}
+            Sign Out
+          </button>
+        </div>
+      </div>
+    `;
+
+  } catch {
+    content.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">⚠️</div>
+      <div class="empty-title">Failed to load profile</div>
+    </div>`;
+  }
+})();
+</script>
+</body>
+</html>

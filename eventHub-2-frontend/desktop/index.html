@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EventHub — Login</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div class="auth-page">
+
+  <!-- Left panel -->
+  <div class="auth-left">
+    <div class="auth-brand">
+      <div class="logo-icon">e</div>
+      <h1>EventHub</h1>
+      <p>Discover and register for events happening across your campus, everything in one place.</p>
+    </div>
+  </div>
+
+  <!-- Right panel -->
+  <div class="auth-right">
+    <div class="auth-card">
+
+      <div class="auth-title">Welcome back</div>
+      <div class="auth-subtitle">Sign in to your EventHub account</div>
+
+      <form id="login-form" novalidate>
+
+        <div class="form-group">
+          <label class="form-label">Email address</label>
+          <div class="input-wrap">
+            <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" fill="none"
+              viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15
+                   a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0
+                   0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243
+                   a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0
+                   1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/>
+            </svg>
+            <input
+              type="email"
+              id="email"
+              placeholder="you@school.edu"
+              autocomplete="email"
+              required
+            />
+          </div>
+          <div class="form-error" id="email-error">Please enter a valid email.</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <div class="input-wrap">
+            <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" fill="none"
+              viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75
+                   m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25
+                   v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75
+                   a2.25 2.25 0 0 0-2.25 2.25v6.75
+                   a2.25 2.25 0 0 0 2.25 2.25Z"/>
+            </svg>
+            <input
+              type="password"
+              id="password"
+              placeholder="Your password"
+              autocomplete="current-password"
+              required
+            />
+            <button type="button" class="input-toggle" id="toggle-pw" aria-label="Show password">
+              <svg id="eye-icon" xmlns="http://www.w3.org/2000/svg" fill="none"
+                viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" width="17" height="17">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M2.036 12.322a1.012 1.012 0 0 1 0-.639
+                     C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007
+                     9.963 7.178.07.207.07.431 0 .639C20.577 16.49
+                     16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"/>
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
+              </svg>
+            </button>
+          </div>
+          <div class="form-error" id="pw-error">Please enter your password.</div>
+        </div>
+
+        <div class="form-error" id="login-error" style="margin-bottom:14px;font-size:0.85rem;"></div>
+
+        <button type="submit" class="btn btn-primary btn-full btn-lg" id="login-btn">
+          <span id="btn-label">Sign In</span>
+          <div class="btn-loading" id="btn-spinner"></div>
+        </button>
+
+      </form>
+
+      <div class="auth-footer">
+        Don't have an account?
+        <a href="signup.html">Create one</a>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script src="../js/auth.js"></script>
+<script src="../js/api.js"></script>
+<script>
+  // Redirect if already logged in
+  redirectIfAuthed();
+
+  // Toggle password visibility
+  const pwInput   = document.getElementById('password');
+  const toggleBtn = document.getElementById('toggle-pw');
+  const eyeIcon   = document.getElementById('eye-icon');
+
+  toggleBtn.addEventListener('click', () => {
+    const isHidden = pwInput.type === 'password';
+    pwInput.type = isHidden ? 'text' : 'password';
+    eyeIcon.innerHTML = isHidden
+      ? /* eye-slash */
+        `<path stroke-linecap="round" stroke-linejoin="round"
+           d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226
+              16.338 7.244 19.5 12 19.5c.993 0 1.953-.138
+              2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12
+              4.5c4.756 0 8.773 3.162 10.065 7.498a10.522
+              10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228
+              3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228
+              -3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242
+              4.242L9.88 9.88"/>`
+      : /* eye */
+        `<path stroke-linecap="round" stroke-linejoin="round"
+           d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423
+              7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963
+              7.178.07.207.07.431 0 .639C20.577 16.49 16.64
+              19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"/>
+         <path stroke-linecap="round" stroke-linejoin="round"
+           d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>`;
+  });
+
+  // Toast helper
+  function showToast(msg, type = '') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'show ' + type;
+    setTimeout(() => { t.className = ''; }, 3000);
+  }
+
+  // Form submit
+  const form      = document.getElementById('login-form');
+  const loginBtn  = document.getElementById('login-btn');
+  const btnLabel  = document.getElementById('btn-label');
+  const spinner   = document.getElementById('btn-spinner');
+  const loginErr  = document.getElementById('login-error');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const email    = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+
+    // Basic validation
+    let valid = true;
+
+    const emailErr = document.getElementById('email-error');
+    const pwErr    = document.getElementById('pw-error');
+
+    emailErr.classList.remove('show');
+    pwErr.classList.remove('show');
+    loginErr.classList.remove('show');
+    loginErr.textContent = '';
+
+    if (!email || !/\S+@\S+\.\S+/.test(email)) {
+      emailErr.classList.add('show');
+      valid = false;
+    }
+
+    if (!password) {
+      pwErr.classList.add('show');
+      valid = false;
+    }
+
+    if (!valid) return;
+
+    // Loading state
+    loginBtn.disabled    = true;
+    btnLabel.textContent = 'Signing in…';
+    spinner.style.display = 'block';
+
+    try {
+      const data = await login(email, password);
+      saveTokens(data.access, data.refresh);
+      showToast('Welcome back!', 'success');
+      setTimeout(() => { window.location.href = 'home.html'; }, 600);
+    } catch (err) {
+      const msg = err?.data?.detail || 'Invalid email or password.';
+      loginErr.textContent = msg;
+      loginErr.classList.add('show');
+      showToast(msg, 'error');
+    } finally {
+      loginBtn.disabled    = false;
+      btnLabel.textContent = 'Sign In';
+      spinner.style.display = 'none';
+    }
+  });
+</script>
+
+</body>
+</html>

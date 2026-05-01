@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EventHub — System Admin</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    /* Page tabs — same pattern as my-club.html */
+    .page-tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 2px solid var(--border);
+      margin-bottom: 28px;
+    }
+    .page-tab {
+      padding: 12px 24px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+      border: none;
+      background: none;
+      font-family: var(--font-body);
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      transition: all var(--transition);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .page-tab svg { width: 16px; height: 16px; }
+    .page-tab:hover { color: var(--text); }
+    .page-tab.active { color: var(--red); border-bottom-color: var(--red); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* User table */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .data-table th {
+      text-align: left;
+      padding: 14px 20px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+    }
+    .data-table td {
+      padding: 14px 20px;
+      font-size: 0.88rem;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+    }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tr:hover td { background: #fafafa; }
+
+    /* Role badges */
+    .role-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 10px;
+      border-radius: 50px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: capitalize;
+    }
+    .role-student     { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+    .role-club_admin  { background: var(--red-light); color: var(--red); }
+    .role-system_admin { background: #1a1a1a; color: white; }
+
+    /* Form panels */
+    .form-panel {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      max-width: 560px;
+    }
+    .form-panel + .form-panel { margin-top: 24px; }
+
+    .input-wrap select {
+      width: 100%;
+      padding: 13px 14px 13px 42px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-md);
+      font-family: var(--font-body);
+      font-size: 0.92rem;
+      background: var(--bg);
+      color: var(--text);
+      outline: none;
+      appearance: none;
+      cursor: pointer;
+    }
+    .input-wrap select:focus {
+      border-color: var(--red);
+      background: var(--white);
+      box-shadow: 0 0 0 3px rgba(193,39,31,0.08);
+    }
+    .no-icon { padding-left: 14px !important; }
+
+    /* Transfer request card */
+    .transfer-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 20px;
+    }
+    .transfer-card + .transfer-card { margin-top: 12px; }
+    .transfer-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin: 10px 0 14px;
+    }
+    .transfer-meta strong { color: var(--text); }
+    .transfer-reason {
+      background: var(--bg);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      font-size: 0.84rem;
+      color: var(--text-soft);
+      line-height: 1.5;
+      margin-bottom: 16px;
+      border-left: 3px solid var(--red-mid);
+    }
+    .transfer-actions { display: flex; gap: 10px; }
+
+    /* Stat strip */
+    .admin-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+  </style>
+</head>
+<body>
+<script src="../js/auth.js"></script>
+<script src="../js/api.js"></script>
+<script src="js/shared-layout.js"></script>
+<script>
+(async () => {
+  await buildLayout('nav-sysadmin');
+
+  const content = document.getElementById('page-content');
+
+  // Guard — system admin only
+  const me = window.__me;
+  if (!me || me.role !== 'system_admin') {
+    content.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">🚫</div>
+      <div class="empty-title">Access Denied</div>
+      <div class="empty-text">This page is only available to system admins.</div>
+    </div>`;
+    return;
+  }
+
+  // Load all data in parallel
+  let users = [], clubs = [], transfers = [];
+  try {
+    const [usersRes, clubsRes, transfersRes] = await Promise.all([
+      getAllUsers(),
+      getClubs(),
+      getTransferRequests('pending'),
+    ]);
+    users     = usersRes.results    ?? usersRes;
+    clubs     = clubsRes.results    ?? clubsRes;
+    transfers = transfersRes.results ?? transfersRes;
+  } catch {
+    content.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">⚠️</div>
+      <div class="empty-title">Failed to load data</div>
+      <div class="empty-text">Make sure the backend is running.</div>
+    </div>`;
+    return;
+  }
+
+  const students   = users.filter(u => u.role === 'student');
+  const clubAdmins = users.filter(u => u.role === 'club_admin');
+
+  content.innerHTML = `
+    <!-- Stats strip -->
+    <div class="admin-stats">
+      <div class="stat-card">
+        <div class="stat-card-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0"/></svg>
+        </div>
+        <div>
+          <div class="stat-card-val">${users.length}</div>
+          <div class="stat-card-label">Total Users</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z"/></svg>
+        </div>
+        <div>
+          <div class="stat-card-val">${clubs.length}</div>
+          <div class="stat-card-label">Clubs</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/></svg>
+        </div>
+        <div>
+          <div class="stat-card-val">${transfers.length}</div>
+          <div class="stat-card-label">Pending Transfers</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Page tabs -->
+    <div class="page-tabs">
+      <button class="page-tab active" data-tab="users">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0"/></svg>
+        Users
+        <span class="nav-badge" style="background:var(--red);color:white;">${users.length}</span>
+      </button>
+      <button class="page-tab" data-tab="clubs">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z"/></svg>
+        Clubs
+      </button>
+      <button class="page-tab" data-tab="transfers">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/></svg>
+        Transfer Requests
+        ${transfers.length > 0 ? `<span class="nav-badge" style="background:var(--red);color:white;">${transfers.length}</span>` : ''}
+      </button>
+    </div>
+
+    <!-- ── Users Tab ─────────────────────────────── -->
+    <div class="tab-panel active" id="tab-users">
+      <div class="flex items-center justify-between mb-24" style="gap:16px;flex-wrap:wrap;">
+        <div class="search-bar" style="max-width:320px;">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
+          <input type="text" id="user-search" placeholder="Search users…" />
+        </div>
+        <div class="tabs" id="role-tabs">
+          <button class="tab active" data-role="all">All (${users.length})</button>
+          <button class="tab" data-role="student">Students (${students.length})</button>
+          <button class="tab" data-role="club_admin">Club Admins (${clubAdmins.length})</button>
+        </div>
+      </div>
+      <div id="users-table-wrap"></div>
+    </div>
+
+    <!-- ── Clubs Tab ─────────────────────────────── -->
+    <div class="tab-panel" id="tab-clubs">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start;max-width:900px;">
+
+        <!-- Create Club -->
+        <div class="form-panel">
+          <div class="section-title" style="margin-bottom:6px;">Create a Club</div>
+          <div class="text-sm text-muted" style="margin-bottom:22px;">Add a new club to the platform</div>
+          <form id="create-club-form" novalidate>
+            <div class="form-group">
+              <label class="form-label">Club Name</label>
+              <div class="input-wrap">
+                <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z"/></svg>
+                <input type="text" id="club-name" placeholder="e.g. Robotics Club" required />
+              </div>
+              <div class="form-error" id="club-name-error">Club name is required.</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Description</label>
+              <div class="input-wrap">
+                <textarea id="club-desc" placeholder="What is this club about?" style="width:100%;padding:13px 14px;border:1.5px solid var(--border);border-radius:var(--radius-md);font-family:var(--font-body);font-size:0.92rem;background:var(--bg);color:var(--text);outline:none;resize:vertical;min-height:90px;transition:border-color var(--transition);"></textarea>
+              </div>
+              <div class="form-error" id="club-desc-error">Description is required.</div>
+            </div>
+            <div class="form-error" id="club-error" style="margin-bottom:12px;font-size:0.85rem;"></div>
+            <button type="submit" class="btn btn-primary" id="create-club-btn">
+              <span id="create-club-label">Create Club</span>
+              <div class="btn-loading" id="create-club-spinner"></div>
+            </button>
+          </form>
+        </div>
+
+        <!-- Assign Club Admin -->
+        <div class="form-panel">
+          <div class="section-title" style="margin-bottom:6px;">Assign Club Admin</div>
+          <div class="text-sm text-muted" style="margin-bottom:22px;">Promote a user to club admin</div>
+          <form id="assign-admin-form" novalidate>
+            <div class="form-group">
+              <label class="form-label">User</label>
+              <div class="input-wrap">
+                <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0"/></svg>
+                <select id="assign-user" required>
+                  <option value="">— Select a user —</option>
+                  ${users.filter(u => u.role !== 'system_admin').map(u =>
+                    `<option value="${u.id}">${u.username} (${u.role.replace('_', ' ')})</option>`
+                  ).join('')}
+                </select>
+              </div>
+              <div class="form-error" id="assign-user-error">Please select a user.</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Club</label>
+              <div class="input-wrap">
+                <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72"/></svg>
+                <select id="assign-club" required>
+                  <option value="">— Select a club —</option>
+                  ${clubs.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
+                </select>
+              </div>
+              <div class="form-error" id="assign-club-error">Please select a club.</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Position</label>
+              <div class="input-wrap">
+                <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3Z"/></svg>
+                <input type="text" id="assign-position" placeholder="e.g. President" required />
+              </div>
+              <div class="form-error" id="assign-position-error">Position is required.</div>
+            </div>
+            <div class="form-error" id="assign-error" style="margin-bottom:12px;font-size:0.85rem;"></div>
+            <button type="submit" class="btn btn-primary" id="assign-btn">
+              <span id="assign-label">Assign Admin</span>
+              <div class="btn-loading" id="assign-spinner"></div>
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Transfers Tab ──────────────────────────── -->
+    <div class="tab-panel" id="tab-transfers">
+      <div id="transfers-list"></div>
+    </div>
+  `;
+
+  // ── Render helpers ──────────────────────────────────────────────────────────
+
+  let currentRoleFilter = 'all';
+
+  function renderUsersTable(userList) {
+    const wrap  = document.getElementById('users-table-wrap');
+    const query = (document.getElementById('user-search')?.value || '').toLowerCase();
+    const filtered = userList.filter(u =>
+      (!query || u.username.toLowerCase().includes(query) || u.email.toLowerCase().includes(query)) &&
+      (currentRoleFilter === 'all' || u.role === currentRoleFilter)
+    );
+
+    if (filtered.length === 0) {
+      wrap.innerHTML = `<div class="empty-state">
+        <div class="empty-icon">👤</div>
+        <div class="empty-title">No users found</div>
+      </div>`;
+      return;
+    }
+
+    wrap.innerHTML = `
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Username</th>
+            <th>Email</th>
+            <th>Role</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${filtered.map(u => `
+            <tr>
+              <td style="font-weight:600;">${u.username}</td>
+              <td style="color:var(--muted);">${u.email}</td>
+              <td><span class="role-badge role-${u.role}">${u.role.replace('_', ' ')}</span></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  }
+
+  function renderTransfers(transferList) {
+    const el = document.getElementById('transfers-list');
+    if (transferList.length === 0) {
+      el.innerHTML = `<div class="empty-state">
+        <div class="empty-icon">✅</div>
+        <div class="empty-title">No pending transfer requests</div>
+        <div class="empty-text">All transfer requests have been handled.</div>
+      </div>`;
+      return;
+    }
+
+    el.innerHTML = transferList.map(t => `
+      <div class="transfer-card" id="transfer-${t.id}">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+          <div style="font-weight:700;font-size:0.95rem;">
+            ${t.requester?.username ?? '—'} wants to join ${t.club?.name ?? '—'}
+          </div>
+          <span class="badge badge-waitlist">Pending</span>
+        </div>
+        <div class="transfer-meta">
+          <span>Replacing: <strong>${t.admin_to_replace?.club?.name ? `${t.admin_to_replace?.club?.name} — ` : ''}${t.admin_to_replace?.club?.name ?? '—'}</strong></span>
+          <span>Submitted: <strong>${timeAgo(t.created_at)}</strong></span>
+        </div>
+        <div class="transfer-reason">"${t.reason}"</div>
+        <div class="transfer-actions">
+          <button class="btn btn-primary btn-sm" onclick="handleApprove('${t.id}')">
+            Approve
+          </button>
+          <button class="btn btn-danger btn-sm" onclick="handleReject('${t.id}')">
+            Reject
+          </button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // Initial renders
+  renderUsersTable(users);
+  renderTransfers(transfers);
+
+  // ── Tab switching ───────────────────────────────────────────────────────────
+  document.querySelectorAll('.page-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.page-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  // ── Role filter tabs ────────────────────────────────────────────────────────
+  document.getElementById('role-tabs').addEventListener('click', e => {
+    const btn = e.target.closest('.tab');
+    if (!btn) return;
+    document.querySelectorAll('#role-tabs .tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    currentRoleFilter = btn.dataset.role;
+    renderUsersTable(users);
+  });
+
+  // ── User search ─────────────────────────────────────────────────────────────
+  let searchTimer;
+  document.getElementById('user-search').addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => renderUsersTable(users), 250);
+  });
+
+  // ── Create club form ────────────────────────────────────────────────────────
+  document.getElementById('create-club-form').addEventListener('submit', async e => {
+    e.preventDefault();
+
+    const name = document.getElementById('club-name').value.trim();
+    const desc = document.getElementById('club-desc').value.trim();
+
+    document.getElementById('club-name-error').classList.remove('show');
+    document.getElementById('club-desc-error').classList.remove('show');
+    document.getElementById('club-error').textContent = '';
+    document.getElementById('club-error').classList.remove('show');
+
+    let valid = true;
+    if (!name) { document.getElementById('club-name-error').classList.add('show'); valid = false; }
+    if (!desc) { document.getElementById('club-desc-error').classList.add('show'); valid = false; }
+    if (!valid) return;
+
+    const btn     = document.getElementById('create-club-btn');
+    const label   = document.getElementById('create-club-label');
+    const spinner = document.getElementById('create-club-spinner');
+
+    btn.disabled      = true;
+    label.textContent = 'Creating…';
+    spinner.style.display = 'block';
+
+    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+
+    try {
+      await createClub({ name, description: desc, slug });
+      showToast('Club created!', 'success');
+      setTimeout(() => window.location.reload(), 700);
+    } catch (err) {
+      const msgs = err?.data;
+      const msg  = typeof msgs === 'object' ? Object.values(msgs).flat().join(' ') : 'Failed to create club.';
+      document.getElementById('club-error').textContent = msg;
+      document.getElementById('club-error').classList.add('show');
+      showToast('Failed to create club.', 'error');
+    } finally {
+      btn.disabled      = false;
+      label.textContent = 'Create Club';
+      spinner.style.display = 'none';
+    }
+  });
+
+  // ── Assign admin form ───────────────────────────────────────────────────────
+  document.getElementById('assign-admin-form').addEventListener('submit', async e => {
+    e.preventDefault();
+
+    const userId   = document.getElementById('assign-user').value;
+    const clubId   = document.getElementById('assign-club').value;
+    const position = document.getElementById('assign-position').value.trim();
+
+    document.getElementById('assign-user-error').classList.remove('show');
+    document.getElementById('assign-club-error').classList.remove('show');
+    document.getElementById('assign-position-error').classList.remove('show');
+    document.getElementById('assign-error').textContent = '';
+    document.getElementById('assign-error').classList.remove('show');
+
+    let valid = true;
+    if (!userId)   { document.getElementById('assign-user-error').classList.add('show'); valid = false; }
+    if (!clubId)   { document.getElementById('assign-club-error').classList.add('show'); valid = false; }
+    if (!position) { document.getElementById('assign-position-error').classList.add('show'); valid = false; }
+    if (!valid) return;
+
+    const btn     = document.getElementById('assign-btn');
+    const label   = document.getElementById('assign-label');
+    const spinner = document.getElementById('assign-spinner');
+
+    btn.disabled      = true;
+    label.textContent = 'Assigning…';
+    spinner.style.display = 'block';
+
+    try {
+      await assignClubAdmin({ user_id: userId, club_id: clubId, position });
+      showToast('Club admin assigned!', 'success');
+      setTimeout(() => window.location.reload(), 700);
+    } catch (err) {
+      const msgs = err?.data;
+      const msg  = typeof msgs === 'object' ? Object.values(msgs).flat().join(' ') : 'Failed to assign admin.';
+      document.getElementById('assign-error').textContent = msg;
+      document.getElementById('assign-error').classList.add('show');
+      showToast('Failed to assign admin.', 'error');
+    } finally {
+      btn.disabled      = false;
+      label.textContent = 'Assign Admin';
+      spinner.style.display = 'none';
+    }
+  });
+
+})();
+
+// ── Transfer request actions ────────────────────────────────────────────────
+async function handleApprove(id) {
+  const card = document.getElementById(`transfer-${id}`);
+  try {
+    await approveTransferRequest(id);
+    showToast('Transfer request approved.', 'success');
+    card.style.opacity = '0.4';
+    card.style.pointerEvents = 'none';
+    setTimeout(() => card.remove(), 800);
+  } catch {
+    showToast('Failed to approve request.', 'error');
+  }
+}
+
+async function handleReject(id) {
+  const card = document.getElementById(`transfer-${id}`);
+  try {
+    await rejectTransferRequest(id);
+    showToast('Transfer request rejected.', '');
+    card.style.opacity = '0.4';
+    card.style.pointerEvents = 'none';
+    setTimeout(() => card.remove(), 800);
+  } catch {
+    showToast('Failed to reject request.', 'error');
+  }
+}
+</script>
+</body>
+</html>
