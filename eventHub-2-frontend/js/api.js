@@ -1,4 +1,4 @@
-const BASE_URL = 'http://localhost:8000/api';
+const BASE_URL = 'https://ashesi-eventhub-4604.onrender.com/api';
 
 async function apiFetch(path, options = {}) {
   const token = getAccessToken();
